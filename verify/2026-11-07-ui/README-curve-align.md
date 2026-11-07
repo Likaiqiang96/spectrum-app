@@ -64,3 +64,14 @@ buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
 ```
 
 ![面积档：峰值是点阵](45-area-peak-dots.png)
+
+
+### 再调：点更小、更密（2026-11-07）
+
+| 项 | 上一版 | 现在 |
+|---|---|---|
+| 密度 | 每带 1 个 | **每带 2 个**（相邻带插值）|
+| 尺寸 | `max(4, bandW×0.55)` ≈ 7.7px | **`max(2.5, bandW×0.28)` ≈ 4px** |
+| 总点数 | 144 | **288** |
+
+![面积档：细密点阵](46-area-peak-dots-fine.png)

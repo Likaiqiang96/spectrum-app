@@ -929,16 +929,24 @@ public final class SpectrumRenderer {
                     c.drawPath(areaPeakPath, peakLinePaint);
                 }
             } else if (style == 4) {
-                // 面积档：峰值画成**点**（每带 1 个），位置与频谱曲线同 x，且不低于它
-                float s2 = Math.max(4f, bandW * 0.55f);
+                // 面积档：峰值画成**点**，每带 2 个（点更小、更密）
+                float s2 = Math.max(2.5f, bandW * 0.28f);
+                int sub2 = 2;
                 for (int i = 0; i < bands; i++) {
-                    float py = base - p[i] * barSpanH;
-                    if (py > areaY[i]) py = areaY[i];         // 不低于频谱曲线
-                    float y = py - s2 * 0.75f;
-                    if (y >= base - 1f) continue;
-                    float x = left + (i + 0.5f) * bandW;
-                    tmp.set(x - s2 / 2f, y - s2 / 2f, x + s2 / 2f, y + s2 / 2f);
-                    c.drawRect(tmp, peakPaint);
+                    float pv = p[i];
+                    float pn = p[i + 1 < bands ? i + 1 : i];
+                    for (int k = 0; k < sub2; k++) {
+                        float t = k / (float) sub2;
+                        float val = pv + (pn - pv) * t;
+                        float py = base - val * barSpanH;
+                        if (py > areaY[i]) py = areaY[i];           // 不低于频谱曲线
+                        float y = py - s2 * 0.75f;
+                        if (y >= base - 1f) continue;
+                        float x = left + (i + (t + 0.5f / sub2)) * bandW;
+                        if (x > right - s2) continue;
+                        tmp.set(x - s2 / 2f, y - s2 / 2f, x + s2 / 2f, y + s2 / 2f);
+                        c.drawRect(tmp, peakPaint);
+                    }
                 }
             } else if (false) {   // 旧分支（已停用）
                 // 面积档：峰值标记**与频谱一一对应**（每带 1 个），宽度就取一根柱子的宽度，
