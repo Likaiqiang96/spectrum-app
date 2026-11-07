@@ -75,3 +75,11 @@ buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
 | 总点数 | 144 | **288** |
 
 ![面积档：细密点阵](46-area-peak-dots-fine.png)
+
+
+---
+
+## 回退：面积档峰值改回连续曲线（2026-11-07）
+
+用户：**「回退成曲线」** → 面积档的峰值恢复为**连续曲线**（和波形档共用同一段代码，
+同一套顶点与单调三次插值，逐点不低于频谱曲线）。

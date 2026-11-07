@@ -913,7 +913,8 @@ public final class SpectrumRenderer {
                     tmp.set(x, y - capH / 2f, x + barW, y + capH / 2f);
                     c.drawRect(tmp, peakPaint);
                 }
-            } else if (style == 3) {
+            } else if (style == 3 || style == 4) {
+                // 波形 / 面积：峰值 = 连续曲线（同一套顶点与单调三次插值，逐点不低于频谱曲线）
                 // 波形 / 面积：峰值画成连续曲线，**和频谱曲线用完全相同的 x 位置与插值**，
                 // 这样两条曲线严格对齐、峰值永远不会掉进频谱里（用户反馈"错位/落进去"）
                 if (bands > 0) {
@@ -927,26 +928,6 @@ public final class SpectrumRenderer {
                     monoSlopes(peakY, peakM, bands, bandW);
                     buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
                     c.drawPath(areaPeakPath, peakLinePaint);
-                }
-            } else if (style == 4) {
-                // 面积档：峰值画成**点**，每带 2 个（点更小、更密）
-                float s2 = Math.max(2.5f, bandW * 0.28f);
-                int sub2 = 2;
-                for (int i = 0; i < bands; i++) {
-                    float pv = p[i];
-                    float pn = p[i + 1 < bands ? i + 1 : i];
-                    for (int k = 0; k < sub2; k++) {
-                        float t = k / (float) sub2;
-                        float val = pv + (pn - pv) * t;
-                        float py = base - val * barSpanH;
-                        if (py > areaY[i]) py = areaY[i];           // 不低于频谱曲线
-                        float y = py - s2 * 0.75f;
-                        if (y >= base - 1f) continue;
-                        float x = left + (i + (t + 0.5f / sub2)) * bandW;
-                        if (x > right - s2) continue;
-                        tmp.set(x - s2 / 2f, y - s2 / 2f, x + s2 / 2f, y + s2 / 2f);
-                        c.drawRect(tmp, peakPaint);
-                    }
                 }
             } else if (false) {   // 旧分支（已停用）
                 // 面积档：峰值标记**与频谱一一对应**（每带 1 个），宽度就取一根柱子的宽度，
