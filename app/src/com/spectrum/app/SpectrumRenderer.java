@@ -142,6 +142,9 @@ public final class SpectrumRenderer {
     private float fMinHz = 60f;
     private float[] waveBuf = new float[0];
     private float[] areaY = new float[0];
+    private float[] peakY = new float[0];
+    private float[] peakM = new float[0];
+    private final android.graphics.Path areaPeakPath = new android.graphics.Path();
     private final android.graphics.Path areaTopPath = new android.graphics.Path();
     private float[] areaM = new float[0];
     private int waveLen;
@@ -684,6 +687,40 @@ public final class SpectrumRenderer {
         c.drawPath(path, wavePaint);
     }
 
+    /** 由 y[] 计算 Fritsch–Carlson 单调切线（不会过冲）。 */
+    private void monoSlopes(float[] y, float[] m, int n, float dx) {
+        for (int i = 0; i < n; i++) {
+            float dm = (i == 0) ? 0f : (y[i] - y[i - 1]) / dx;
+            float dp = (i == n - 1) ? 0f : (y[i + 1] - y[i]) / dx;
+            if (dm * dp <= 0f) {
+                m[i] = 0f;
+            } else {
+                float v = (dm + dp) * 0.5f;
+                float lim = 3f * Math.min(Math.abs(dm), Math.abs(dp));
+                if (Math.abs(v) > lim) v = Math.signum(v) * lim;
+                m[i] = v;
+            }
+        }
+    }
+
+    /** 用同一套顶点/切线画一条单调三次曲线：x 取 band 中心，两端贴到左右边界。 */
+    private void buildMonoPath(android.graphics.Path out, float[] y, float[] m,
+                               float left, float right, float bandW, int n) {
+        out.reset();
+        if (n <= 0) return;
+        float firstX = left + 0.5f * bandW;
+        out.moveTo(left, y[0]);
+        out.lineTo(firstX, y[0]);
+        for (int i = 0; i < n - 1; i++) {
+            float x0 = left + (i + 0.5f) * bandW;
+            float x1 = left + (i + 1.5f) * bandW;
+            float third = (x1 - x0) / 3f;
+            out.cubicTo(x0 + third, y[i] + m[i] * third,
+                    x1 - third, y[i + 1] - m[i + 1] * third, x1, y[i + 1]);
+        }
+        out.lineTo(right, y[n - 1]);
+    }
+
     /** 面积填充那条单调三次曲线在段 i 上、参数 t∈[0,1] 处的高度。 */
     private float areaCurveY(int i, float t, float dx) {
         if (areaY.length == 0 || i < 0 || i >= areaY.length - 1) return 0f;
@@ -750,41 +787,9 @@ public final class SpectrumRenderer {
             if (areaY.length != bands) areaY = new float[bands];
             if (areaM.length != bands) areaM = new float[bands];
             for (int i = 0; i < bands; i++) areaY[i] = base - v[i] * barSpanH;
-            for (int i = 0; i < bands; i++) {
-                float dm = (i == 0) ? 0f : (areaY[i] - areaY[i - 1]) / bandW;
-                float dp = (i == bands - 1) ? 0f : (areaY[i + 1] - areaY[i]) / bandW;
-                if (dm * dp <= 0f) {
-                    areaM[i] = 0f;                       // 极值点/方向反转 → 水平切线
-                } else {
-                    float m = (dm + dp) * 0.5f;
-                    float lim = 3f * Math.min(Math.abs(dm), Math.abs(dp));
-                    if (Math.abs(m) > lim) m = Math.signum(m) * lim;
-                    areaM[i] = m;
-                }
-            }
-            for (int i = 0; i < bands - 1; i++) {
-                float x0 = left + (i + 0.5f) * bandW;
-                float x1 = left + (i + 1.5f) * bandW;
-                float y0 = areaY[i];
-                float y1 = areaY[i + 1];
-                float third = (x1 - x0) / 3f;
-                path.cubicTo(x0 + third, y0 + areaM[i] * third,
-                        x1 - third, y1 - areaM[i + 1] * third, x1, y1);
-            }
-            // 顶部曲线单独存一条 Path：填充用它闭合成面，描边（包络线）也直接用它
-            areaTopPath.reset();
-            areaTopPath.moveTo(left, areaY[0]);
-            for (int i = 0; i < bands - 1; i++) {
-                float x0 = left + (i + 0.5f) * bandW;
-                float x1 = left + (i + 1.5f) * bandW;
-                float y0 = areaY[i];
-                float y1 = areaY[i + 1];
-                float third = (x1 - x0) / 3f;
-                areaTopPath.cubicTo(x0 + third, y0 + areaM[i] * third,
-                        x1 - third, y1 - areaM[i + 1] * third, x1, y1);
-            }
-            areaTopPath.lineTo(right, areaY[bands - 1]);
-
+            monoSlopes(areaY, areaM, bands, bandW);
+            // 顶部曲线（填充和描边共用同一条）
+            buildMonoPath(areaTopPath, areaY, areaM, left, right, bandW, bands);
             path.reset();
             path.addPath(areaTopPath);
             path.lineTo(right, base);
@@ -908,44 +913,22 @@ public final class SpectrumRenderer {
                     tmp.set(x, y - capH / 2f, x + barW, y + capH / 2f);
                     c.drawRect(tmp, peakPaint);
                 }
-            } else if (style == 3) {   // 波形档：峰值画连续曲线
-                // 波形档：峰值画成**连续曲线**（用户 2026-11-07 要求），用与包络线同样的圆滑连接
+            } else if (style == 3 || style == 4) {
+                // 波形 / 面积：峰值画成连续曲线，**和频谱曲线用完全相同的 x 位置与插值**，
+                // 这样两条曲线严格对齐、峰值永远不会掉进频谱里（用户反馈"错位/落进去"）
                 if (bands > 0) {
-                    path.reset();
-                    float px = left;
-                    float py = base - p[0] * barSpanH;
-                    path.moveTo(px, py);
-                    for (int i = 1; i < bands; i++) {
-                        float x = left + i * bandW;
-                        float y = base - p[i] * barSpanH;
-                        float mx = (px + x) / 2f;
-                        float my = (py + y) / 2f;
-                        path.quadTo(px, py, mx, my);
-                        px = x;
-                        py = y;
+                    if (peakY.length != bands) peakY = new float[bands];
+                    if (peakM.length != bands) peakM = new float[bands];
+                    for (int i = 0; i < bands; i++) {
+                        float py = base - p[i] * barSpanH;
+                        if (py > areaY[i]) py = areaY[i];      // 不低于频谱曲线
+                        peakY[i] = py - Math.max(2.5f, bandW * 0.12f);
                     }
-                    path.lineTo(px, py);
-                    c.drawPath(path, peakLinePaint);
+                    monoSlopes(peakY, peakM, bands, bandW);
+                    buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
+                    c.drawPath(areaPeakPath, peakLinePaint);
                 }
-            } else if (style == 4) {   // 面积档：峰值与波形档一样画**连续曲线**
-                if (bands > 0) {
-                    path.reset();
-                    float px = left;
-                    float py = base - p[0] * barSpanH;
-                    path.moveTo(px, py);
-                    for (int i = 1; i < bands; i++) {
-                        float x = left + i * bandW;
-                        float y = base - p[i] * barSpanH;
-                        float mx = (px + x) / 2f;
-                        float my = (py + y) / 2f;
-                        path.quadTo(px, py, mx, my);
-                        px = x;
-                        py = y;
-                    }
-                    path.lineTo(px, py);
-                    c.drawPath(path, peakLinePaint);
-                }
-            } else if (false) {   // 旧的点阵分支（已停用）
+            } else if (false) {   // 旧分支（已停用）
                 // 面积档：峰值标记**与频谱一一对应**（每带 1 个），宽度就取一根柱子的宽度，
                 // 高度固定 —— 不再自定义点的大小（用户 2026-11-07 要求）
                 float capW = Math.max(3f, bandW * barFactor);
