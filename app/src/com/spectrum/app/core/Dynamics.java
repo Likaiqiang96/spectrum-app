@@ -48,7 +48,7 @@ public final class Dynamics {
 
         /** 弹道模型：峰值点被瞬态"蹬"出去后，受重力下落、受阻力削速。 */
         private static final float FALL_PER_SEC = 1.6f;          // 兜底
-        private static final float MAX_PEAK = 3.0f;
+        private static final float MAX_PEAK = 1.5f;   // 原 3.0 允许飞到屏幕外，太夸张
         private static final float MERGE_GAP = 0.02f;
 
         private float[] pos = new float[0];     // 显示高度（归一化）

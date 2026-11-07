@@ -97,7 +97,7 @@ public final class SpectrumRenderer {
      */
     private static final float BOOST_PER_DB_RATE = 0.0022f;   // 用户要求「抛得更高」，从 0.0009 提到 0.0022
     /** 抛出量上限（归一化）。用户要求"可以被甩出屏幕"，所以放到 0.85 —— 峰值点可飞出上边缘。 */
-    private static final float MAX_BOOST = 0.85f;
+    private static final float MAX_BOOST = 0.45f;   // 抛出高度上限（归一化）：原 0.85 抛得太高
     /** 死区：低于这个变化速率一律不算瞬态（环境噪声的逐帧抖动大约 15 dB/s，会被挡掉）。 */
     /**
      * 死区（dB/s）。**这个值很关键**：麦克风底噪的逐帧抖动换算成包络速率大约 30~55 dB/s，
