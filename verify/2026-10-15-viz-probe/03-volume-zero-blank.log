@@ -1,0 +1,21 @@
+# 条件：RECORD_AUDIO 已授予，两个 Visualizer 都 setEnabled=true 成功，
+#       AudioTrack 状态 playState=3（确实在播），但媒体音量 = 0 且 Muted=true
+#       （dumpsys audio → STREAM_MUSIC: Muted: true, Current: 2 (speaker): 0）
+# 结果：数据**全 0** —— 和"根本没在放歌"长得一模一样
+
+A/global(session 0): setEnabled(true) rc=0 enabled=true captureSize=1024
+B/own(session 577): setEnabled(true) rc=0 enabled=true captureSize=1024
+tone start (60Hz+150Hz, 14000ms, trackVol=0.05)
+
+A/global wf#1  sr=44100000 len=1024 rms=0.00000 playing=true head=128 128 128 128 128 128 128 128 ...
+A/global fft#1 sr=44100000 len=1024 peakBin=-1 peak=0.0 playing=true raw[0..7]=0 0 0 0 0 0 0 0
+B/own    wf#1  sr=44100000 len=1024 rms=0.00000 playing=true head=128 128 128 128 ...
+B/own    fft#1 sr=44100000 len=1024 peakBin=-1 peak=0.0 playing=true raw[0..7]=0 0 0 0 0 0 0 0
+
+t=2s playing=true
+   A/global wf=39 fft=39 sr=44100000 gap=49.0ms meanRms=0.00000 maxRms=0.00000 peakRms=(0mB/0mB)
+   B/own    wf=39 fft=39 sr=44100000 gap=49.2ms meanRms=0.00000 maxRms=0.00000 peakRms=(0mB/0mB)
+
+# 对照：把音量设到 6/60 并解除 mute（media volume --stream 3 --set 6 +
+#       input keyevent 164 解除静音）之后，同一段音源立刻有数据（见 02）。
+# 处置：App 必须有 SilenceWatchdog —— 连续 3 秒全 0 就提示「媒体音量为 0，请调大音量」。

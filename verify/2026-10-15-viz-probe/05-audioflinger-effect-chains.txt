@@ -1,0 +1,24 @@
+# adb shell dumpsys media.audio_flinger —— 探针运行中（session 585 在播，两个 Visualizer 都 enable）
+# 摘录：证明"全局混音上的 Visualizer"确实作为效果链挂到了输出线程
+
+Output thread ..., name AudioOut_1D, tid 1358, type 0 (MIXER):
+  ...
+  1 Tracks of which 1 are active
+    T Name Active Client Session S  Flags   Format Chn mask  SRate ST  L dB  R dB  VS dB ...
+         0    yes  15742     585 A  0x000 00000001 00000001  48000  3    -6    -6     0 ...
+  2 Effect Chains
+    2 effects for session 585
+	In buffer    Out buffer                 Active tracks:
+	0xf08b6000   0xf08e8000 -> 0xee4e7000   1
+    ...
+    1 effects for session 0
+		- name: Visualizer
+
+# 读法：
+#   - "2 effects for session 585" = 自建 AudioTrack 的 Visualizer（加上 PEAK_RMS 测量模式的那个效果）
+#   - "1 effects for session 0 / name: Visualizer" = 全局混音上的 Visualizer，就是「音源」模式要用的那条
+#   - 轨道音量列 L dB/R dB = -6（= 探针里设的 trackVol 0.5），**没有把媒体音量算进来**：
+#     说明媒体音量是在更下游（HAL/DSP）施加的 —— 但这跟"音量 0 时捕获全 0"并不矛盾，
+#     Flyme 在 index=0 时显然把混音缓冲本身清掉了（见 03）。
+#   - 另一个重要观察：这次 dump 里没有 COMPRESS_OFFLOAD 线程，因为音源是 PCM AudioTrack。
+#     长 MP3 会不会走 offload 并因此绕过混音，是还没验证的最大风险（设计文档 §13 P1）。

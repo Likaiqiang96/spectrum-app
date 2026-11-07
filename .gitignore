@@ -1,0 +1,14 @@
+# 构建产物
+build/
+*.apk.tmp
+*.idsig
+
+# IDE / Gradle（本项目不用 Gradle，留着以防万一）
+.gradle/
+.idea/
+*.iml
+local.properties
+
+# 系统垃圾
+.DS_Store
+Thumbs.db

@@ -1,0 +1,34 @@
+# 条件：RECORD_AUDIO 已授予；媒体音量 6/60 且 Muted=false；
+#       音源 = 自建 AudioTrack 播 8 Hz + 12 Hz（亚低频，喇叭发不出来的静音测试信号）
+# 结果：session 0（全局输出混音）**能抓到数据**
+
+device=M1852 api=27  tone=true
+Visualizer: maxCaptureRate=20000 mHz = 20.0 Hz, captureSizeRange=128..1024
+AudioTrack state=1 playState=3 session=585 trackVol=0.5
+A/global(session 0): ctor ok, enabled=false
+A/global(session 0): setCaptureSize(1024) rc=0
+A/global(session 0): setScalingMode(NORMALIZED) rc=0 now=NORMALIZED
+A/global(session 0): setMeasurementMode(PEAK_RMS) rc=0
+A/global(session 0): setDataCaptureListener(maxRate) rc=0
+A/global(session 0): setEnabled(true) rc=0 enabled=true captureSize=1024
+B/own(session 585): setEnabled(true) rc=0 enabled=true captureSize=1024
+tone start (8.0Hz+12.0Hz, 14000ms, trackVol=0.5)
+
+A/global wf#1 sr=44100000 len=1024 rms=0.01261 playing=true
+A/global fft#1 sr=44100000 len=1024 peakBin=1 peak=6.3 playing=true raw[0..7]=8 0 -6 2 1 -1 -2 -1
+B/own    wf#1 sr=44100000 len=1024 rms=0.62679 playing=true
+B/own    fft#1 sr=44100000 len=1024 peakBin=3 peak=160.5 playing=true raw[0..7]=-73 -2 105 -52 106 -74 -113 114
+
+t=2s playing=true scaling=NORMALIZED
+   A/global wf=39 fft=39 sr=44100000 gap=49.0ms meanRms=0.01260
+   B/own    wf=39 fft=39 sr=44100000 gap=49.2ms meanRms=0.62672
+t=4s playing=true scaling=NORMALIZED
+   A/global wf=77 fft=77 sr=44100000 gap=50.7ms
+   B/own    wf=77 fft=77 sr=44100000 gap=50.7ms
+
+# 读出来的硬参数：
+#   maxCaptureRate = 20000 mHz          → 回调频率上限 20 Hz（实测间隔 49.0~51.6 ms）
+#   captureSizeRange = [128,1024]       → FFT 最多 1024 点
+#   samplingRate 回调参数 = 44100000    → 单位是毫赫兹，即 44.1 kHz
+#   波形 = 8-bit 无符号（静音 128）      FFT = 8-bit 有符号 real/imag 交错
+#   同一段音源：轨道级 rms 0.627 vs 全局混音 rms 0.0126 → 全局低约 34 dB（自动量程必需）

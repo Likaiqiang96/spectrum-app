@@ -1,0 +1,19 @@
+# 条件：APK 只声明 MODIFY_AUDIO_SETTINGS（RECORD_AUDIO 声明了但没授予）
+#       adb install -r（不加 -g），runtime permissions: （空）
+# 结果：两个 Visualizer 都建不起来 —— 连绑自己 AudioTrack 的 session 也一样
+
+device=M1852 api=27 sr=48000
+maxCaptureRate=20000 mHz = 20.0 Hz
+captureSizeRange=[128,1024]
+AudioTrack state=1 session=569 trackVol=0.05
+A/global(session 0): EXCEPTION java.lang.RuntimeException: Cannot initialize Visualizer engine, error: -3
+B/own(session 569): EXCEPTION java.lang.RuntimeException: Cannot initialize Visualizer engine, error: -3
+
+# 同时系统侧（logcat 全量）给出的原因：
+# W ServiceManager: Permission failure: android.permission.RECORD_AUDIO from uid=10111 pid=15231
+# E               : Request requires android.permission.RECORD_AUDIO
+# E visualizers-JNI: Visualizer initCheck failed -3
+# E Visualizer-JAVA: Error code -3 when initializing Visualizer.
+
+# 处置：adb shell pm grant com.spectrum.vizprobe android.permission.RECORD_AUDIO
+#       → 立刻恢复正常（见 02）

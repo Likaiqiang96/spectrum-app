@@ -1,0 +1,19 @@
+# 条件：不播放任何声音，只开麦克风录环境噪声（8 秒）；媒体音量 0
+# 结果：✅ 通路可用，而且是最好的一种 —— UNPROCESSED 源存在（不受 Fluence 降噪/AGC 影响）
+
+device=M1852 api=27  tone=false
+Visualizer: maxCaptureRate=20000 mHz = 20.0 Hz, captureSizeRange=128..1024
+(没传 tone=true：不播任何声音，只测麦克风)
+
+B/microphone: minBufferSize=3840 bytes = 1920 frames
+B/microphone: AudioSource=UNPROCESSED OK
+B/microphone 频谱 Top5 (bin→Hz / dB): #1=23Hz/-89.1dB #4=94Hz/-89.7dB #2=47Hz/-91.5dB #3=70Hz/-91.7dB #20=469Hz/-92.1dB
+B/microphone 结果: chunks=372 frames=380928 ffts=37
+B/microphone 电平: meanRms=0.00228 (-52.8 dBFS)  maxRms=0.02271 (-32.9 dBFS)
+B/microphone 分带(每 4 带取一, dBFS): 60Hz:-87 96Hz:-88 152Hz:-100 242Hz:-100 386Hz:-100 615Hz:-101 980Hz:-100 1561Hz:-98 2486Hz:-103 3959Hz:-103 6307Hz:-104 10045Hz:-104
+
+# 说明：
+#   - chunks=372 × 1024 帧 = 380928 帧 = 7.94 s，与 8 s 测试时长吻合；
+#   - ffts=37 是探针里"每 10 块做一次"的策略，不是硬件上限 —— 48 kHz / hop 1024 可以跑到 46.9 fps；
+#   - 分带用的就是设计文档 §6.3 那三条规则（含"带比 bin 窄时按几何中心插值"），在真机数据上没出问题；
+#   - 半夜的房间底噪 −52.8 dBFS，60 Hz 附近 −87 dB 的低频隆隆声最明显，1 kHz 以上都在 −100 dB 以下。
