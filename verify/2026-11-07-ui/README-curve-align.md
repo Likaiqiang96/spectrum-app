@@ -37,3 +37,30 @@ buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
 波形档和面积档共用这段逻辑。
 
 ![面积档与波形档：两条曲线严格对齐](44-curve-aligned.png)
+
+
+---
+
+## 面积档的峰值改回「点」（2026-11-07）
+
+用户：**「把样式-面积的最大值的连续曲线改成点」**。
+
+- 波形档：峰值 = **连续曲线**（不变）；
+- 面积档：峰值 = **每带 1 个点**，点的 x 与频谱曲线同位置，y 取 `min(峰值, 频谱曲线)` 再上抬 0.75 个点高
+  —— 所以既是点阵，又不再掉进频谱里。
+
+```java
+} else if (style == 4) {
+    float s2 = Math.max(4f, bandW * 0.55f);
+    for (int i = 0; i < bands; i++) {
+        float py = base - p[i] * barSpanH;
+        if (py > areaY[i]) py = areaY[i];        // 不低于频谱曲线
+        float y = py - s2 * 0.75f;
+        float x = left + (i + 0.5f) * bandW;
+        tmp.set(x - s2 / 2f, y - s2 / 2f, x + s2 / 2f, y + s2 / 2f);
+        c.drawRect(tmp, peakPaint);
+    }
+}
+```
+
+![面积档：峰值是点阵](45-area-peak-dots.png)

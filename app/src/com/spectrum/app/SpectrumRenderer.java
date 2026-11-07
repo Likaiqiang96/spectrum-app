@@ -913,7 +913,7 @@ public final class SpectrumRenderer {
                     tmp.set(x, y - capH / 2f, x + barW, y + capH / 2f);
                     c.drawRect(tmp, peakPaint);
                 }
-            } else if (style == 3 || style == 4) {
+            } else if (style == 3) {
                 // 波形 / 面积：峰值画成连续曲线，**和频谱曲线用完全相同的 x 位置与插值**，
                 // 这样两条曲线严格对齐、峰值永远不会掉进频谱里（用户反馈"错位/落进去"）
                 if (bands > 0) {
@@ -927,6 +927,18 @@ public final class SpectrumRenderer {
                     monoSlopes(peakY, peakM, bands, bandW);
                     buildMonoPath(areaPeakPath, peakY, peakM, left, right, bandW, bands);
                     c.drawPath(areaPeakPath, peakLinePaint);
+                }
+            } else if (style == 4) {
+                // 面积档：峰值画成**点**（每带 1 个），位置与频谱曲线同 x，且不低于它
+                float s2 = Math.max(4f, bandW * 0.55f);
+                for (int i = 0; i < bands; i++) {
+                    float py = base - p[i] * barSpanH;
+                    if (py > areaY[i]) py = areaY[i];         // 不低于频谱曲线
+                    float y = py - s2 * 0.75f;
+                    if (y >= base - 1f) continue;
+                    float x = left + (i + 0.5f) * bandW;
+                    tmp.set(x - s2 / 2f, y - s2 / 2f, x + s2 / 2f, y + s2 / 2f);
+                    c.drawRect(tmp, peakPaint);
                 }
             } else if (false) {   // 旧分支（已停用）
                 // 面积档：峰值标记**与频谱一一对应**（每带 1 个），宽度就取一根柱子的宽度，
