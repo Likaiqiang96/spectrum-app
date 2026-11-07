@@ -1149,7 +1149,7 @@ public final class SpectrumRenderer {
         c.drawRoundRect(tmp, barH / 2f, barH / 2f, hintBg);
         float frac;
         if (isGain) {
-            frac = (settings.gainDb + 24f) / 48f;
+            frac = (settings.gainDb + AppSettings.GAIN_LIMIT_DB) / (2f * AppSettings.GAIN_LIMIT_DB);
         } else {
             frac = (brightness - 0.03f) / 0.97f;
         }

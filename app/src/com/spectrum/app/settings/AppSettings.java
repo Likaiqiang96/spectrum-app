@@ -91,9 +91,12 @@ public final class AppSettings {
     }
 
     /** 只改内存，不写盘（拖动时每帧都会调，写盘会卡）。抬手时调 {@link #persistGain()}。 */
+    /** 增益调节范围（±dB）。原 ±24 太窄，用户要求扩大。 */
+    public static final float GAIN_LIMIT_DB = 48f;
+
     public synchronized void setGainDb(float db) {
-        if (db < -24f) db = -24f;
-        else if (db > 24f) db = 24f;
+        if (db < -GAIN_LIMIT_DB) db = -GAIN_LIMIT_DB;
+        else if (db > GAIN_LIMIT_DB) db = GAIN_LIMIT_DB;
         gainDb = db;
     }
 
